@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 # --- START: MODIFIED SECTION ---
 # Replace "YOUR_ACTUAL_GEMINI_API_KEY" with your real API key
 # For security, consider using environment variables for production deployments.
-GEMINI_API_KEY = "AIzaSyCdSV-j0Hd1bdBF87f9jdgUTj4ch19snm8"
+GEMINI_API_KEY = "your key"
     
 
 # 1. Define the Agent's State
