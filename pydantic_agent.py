@@ -62,30 +62,25 @@ def get_current_weather(location: str, date: str) -> str:
 
 # Initialize the Gemini LLM
 # Pass the API key directly to the google_api_key parameter
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0, google_api_key=GEMINI_API_KEY)
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.5, google_api_key=GEMINI_API_KEY)
 
 # Bind the tool to the LLM
 llm_with_tools = llm.bind_tools([get_current_weather])
 
+
 # 3. Define Nodes:
 
 def call_llm(state: AgentState):
-    """
-    Node to invoke the LLM with the current conversation history.
-    """
+    """Node to invoke the LLM with dynamic tool routing based on user input."""
     messages = state["messages"]
+    user_input = messages[-1].content if isinstance(messages[-1], HumanMessage) else ""
+    dynamic_llm = get_llm_for_input(user_input)
+
     print(f"\n--- Node: call_llm (Invoking Gemini) ---")
-    # --- Debugging: Print messages list before invoking LLM ---
-    print(f"DEBUG call_llm: Messages being sent to LLM:")
-    for i, msg in enumerate(messages):
-        print(f"  Message {i}: type={type(msg)}, content='{getattr(msg, 'content', 'N/A')}', tool_calls='{getattr(msg, 'tool_calls', 'N/A')}', tool_call_id='{getattr(msg, 'tool_call_id', 'N/A')}'")
-    # --- End Debugging ---
+    # for i, msg in enumerate(messages):
+     #   print(f"  Message {i}: type={type(msg)}, content='{getattr(msg, 'content', 'N/A')}', tool_calls='{getattr(msg, 'tool_calls', 'N/A')}', tool_call_id='{getattr(msg, 'tool_call_id', 'N/A')}'")
 
-
-
-
-
-    response = llm_with_tools.invoke(messages)
+    response = dynamic_llm.invoke(messages)
     return {"messages": [response]}
 
 def call_tool(state: AgentState):
@@ -96,7 +91,7 @@ def call_tool(state: AgentState):
     # print(f"\n--- Node: calling tool")
     messages = state["messages"]
     last_message = messages[-1] # latest msg
-    print(f"\n--- Last Message: {last_message} ---")
+    #print(f"\n--- Last Message: {last_message} ---")
     
     
     
@@ -117,7 +112,7 @@ def call_tool(state: AgentState):
 
 def should_continue(state: AgentState) -> str:
     """
-    Determines whether the agent should continue by calling a tool
+     agent should continue by calling a tool
     or finish by responding directly.
     """
     last_message = state["messages"][-1]
@@ -129,6 +124,12 @@ def should_continue(state: AgentState) -> str:
         print("\n--- Decision: END ---")
         return "end"
 
+# Helper: dynamically bind LLM with the appropriate tool behavior
+def get_llm_for_input(user_input: str):
+    if "weather" in user_input.lower() or "temperature" in user_input.lower():
+        return llm.bind_tools([get_current_weather], tool_choice="get_current_weather")
+    else:
+        return llm.bind_tools([get_current_weather], tool_choice="auto")
 # 5. Assemble the Graph:
 
 workflow = StateGraph(AgentState)
@@ -176,7 +177,7 @@ for s in app.stream(inputs_sf):
 
 
 print("\n--- Running Agent (Gemini): Weather in New York Tomorrow ---")
-inputs_ny = {"messages": [HumanMessage(content=f"What will the weather be like in New York tomorrow ({TOMORROW_DATE_STR})?")]}
+inputs_ny = {"messages": [HumanMessage(content=f"What is the current weather in New York on 2025-06-20 using your weather tool?")]}
 for s in app.stream(inputs_ny):
     print(s)
 
